@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virginia General Assembly — 2026 Housing Vote Tracker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fff;
+    padding: 0;
+  }
+
+  .tracker {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 32px;
+  }
+
+  .tracker-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111;
+    margin-bottom: 4px;
+  }
+
+  .tracker-sub {
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 20px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    border-bottom: 1.5px solid #e0e0e0;
+    margin-bottom: 16px;
+    gap: 0;
+  }
+
+  .tab {
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: #888;
+    border-bottom: 2.5px solid transparent;
+    margin-bottom: -1.5px;
+    transition: color 0.15s;
+  }
+
+  .tab:hover { color: #333; }
+  .tab.active { color: #111; border-bottom-color: #111; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .controls input,
+  .controls select {
+    font-size: 13px;
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    color: #111;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .controls input { width: 190px; }
+  .controls input:focus,
+  .controls select:focus { border-color: #999; }
+
+  .row-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: #999;
+  }
+
+  /* Table wrapper */
+  .tbl-wrap {
+    overflow-x: auto;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  /* Header */
+  thead th {
+    background: #f7f7f7;
+    color: #555;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 10px 8px 8px;
+    border-bottom: 1px solid #e8e8e8;
+    text-align: center;
+    vertical-align: bottom;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  thead th.th-name {
+    text-align: left;
+    padding-left: 14px;
+    white-space: nowrap;
+  }
+
+  thead th.th-bill {
+    cursor: pointer;
+    width: 110px;
+    white-space: normal;
+  }
+  thead th.th-bill.hidden { display: none; }
+  tbody td.hidden { display: none; }
+
+  thead th.th-bill:hover { color: #222; background: #f0f0f0; }
+  thead th.th-sortable { cursor: pointer; }
+  thead th.th-sortable:hover { color: #222; background: #f0f0f0; }
+
+  .sort-arrow { font-size: 10px; opacity: 0.4; margin-left: 2px; }
+  .sort-arrow.on { opacity: 1; }
+
+  .bill-code { font-size: 12px; font-weight: 700; color: #333; display: block; margin-bottom: 2px; }
+  .bill-desc { font-size: 10px; color: #666; display: block; margin-bottom: 2px; font-weight: 400; text-transform: none; letter-spacing: 0; white-space: normal; line-height: 1.3; }
+  .bill-date { font-size: 10px; color: #888; display: block; }
+  .bill-tally { font-size: 10px; color: #aaa; display: block; }
+
+  /* Rows */
+  tbody tr { border-bottom: 1px solid #f0f0f0; transition: background 0.08s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #fafafa; }
+
+  tbody td {
+    padding: 7px 8px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  tbody td.td-name {
+    text-align: left;
+    padding-left: 14px;
+    font-weight: 500;
+    font-size: 13px;
+    color: #111;
+    white-space: nowrap;
+  }
+
+  /* Party badges */
+  .party {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+  }
+  .party-d { background: #dbeafe; color: #1e40af; }
+  .party-r { background: #fee2e2; color: #991b1b; }
+
+  /* Vote badges */
+  .vote {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 9px;
+    border-radius: 4px;
+    min-width: 30px;
+    text-align: center;
+    letter-spacing: 0.02em;
+  }
+  .vote-y  { background: #dcfce7; color: #166534; }
+  .vote-n  { background: #fee2e2; color: #991b1b; }
+  .vote-nv { background: #fef9c3; color: #854d0e; }
+  .vote-blank { color: #ccc; font-size: 13px; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    align-items: center;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #666;
+  }
+
+  /* Empty state */
+  .empty-row td {
+    text-align: center;
+    padding: 28px;
+    color: #aaa;
+    font-size: 13px;
+  }
+
+  /* Name col width */
+  .col-name { width: 150px; }
+  .col-party { width: 58px; }
+
+  @media (max-width: 600px) {
+    .controls input { width: 140px; }
+    .tracker-title { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+<div class="tracker">
+  <p class="tracker-title">Virginia General Assembly Voting Record &mdash; 2026 YIMBY Bills</p>
+  <p class="tracker-sub">How members voted on housing supply bills during the 2026 session. Click any column header to sort.</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('house')">House of Delegates</button>
+    <button class="tab" onclick="switchTab('senate')">Senate</button>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="search" placeholder="Search by name&hellip;" oninput="render()" />
+    <select id="partyFilter" onchange="render()">
+      <option value="">All parties</option>
+      <option value="D">Democrat</option>
+      <option value="R">Republican</option>
+    </select>
+    <select id="voteFilter" onchange="render()">
+      <option value="">All votes</option>
+      <option value="Y">Yea</option>
+      <option value="N">Nay</option>
+      <option value="NV">Not voting</option>
+    </select>
+    <select id="billFilter" onchange="render()">
+      <option value="">All bills</option>
+    </select>
+    <span class="row-count" id="rowCount"></span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="vote vote-y">Y</span> Yea</div>
+    <div class="legend-item"><span class="vote vote-n">N</span> Nay</div>
+    <div class="legend-item"><span class="vote vote-nv">NV</span> Not voting</div>
+    <div class="legend-item"><span class="vote-blank">&mdash;</span> Not on this vote</div>
+    <div class="legend-item"><span class="party party-d">D</span> Democrat</div>
+    <div class="legend-item"><span class="party party-r">R</span> Republican</div>
+  </div>
+</div>
+
+<script>
+const DATA = {
+  house: {
+    label: "Delegate",
+    headers: [
+      {code:"HB816", desc:"Zoning; By-Right Multifamily (Commercial)", date:"01/29/2026", tally:"64-Y 35-N"},
+      {code:"HB804", desc:"Localities; Statewide Housing Targets",     date:"01/29/2026", tally:"63-Y 35-N"},
+      {code:"HB1279",desc:"Affordable Housing; Religious/Nonprofit (Gov. Rec.)", date:"04/22/2026", tally:"62-Y 38-N"},
+      {code:"SB531", desc:"Zoning; Accessory Dwelling Units",          date:"03/04/2026", tally:"62-Y 37-N"},
+      {code:"HB888", desc:"Min. Off-Street Parking (Gov. Rec.)",       date:"04/22/2026", tally:"62-Y 38-N"},
+      {code:"HB655", desc:"Zoning; Manufactured Housing",              date:"03/06/2026", tally:"96-Y 0-N"},
+      {code:"HB594", desc:"Affordable Housing Expedited Approval",     date:"03/06/2026", tally:"81-Y 15-N"},
+    ],
+    rows: [
+      {name:"Anderson",party:"D",votes:["Y","Y","Y","Y","N","Y","Y"]},
+      {name:"Anthony",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Askew",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Austin",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Ballard",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Bennett-Parker",party:"D",votes:["Y","Y","—","—","—","—","—"]},
+      {name:"Bloxom",party:"R",votes:["N","N","N","N","N","NV","Y"]},
+      {name:"Bulova",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Callsen",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Carnegie",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Carr",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Carroll",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Cherry",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Clark",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Cohen",party:"D",votes:["Y","Y","Y","Y","Y","NV","NV"]},
+      {name:"Cole, J.G.",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Cole, N.T.",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Convirs-Fowler",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Cornett",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Cousins",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Davis",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Delaney",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Dougherty",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Downey",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Feggans",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Fowler",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Franklin, L.V.",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Franklin, M.A.",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Gardner",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Garrett",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Glass",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Griffin",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Guzman",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Hamilton",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Hayes",party:"D",votes:["Y","Y","Y","Y","Y","Y","NV"]},
+      {name:"Helmer",party:"D",votes:["Y","Y","N","Y","Y","Y","Y"]},
+      {name:"Henson",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Hernandez",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Herring",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Hodges",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Hope",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Kent",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Keys-Gamarra",party:"D",votes:["Y","Y","Y","N","Y","Y","Y"]},
+      {name:"Kilgore",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Knight",party:"R",votes:["NV","NV","—","—","—","—","—"]},
+      {name:"Krizek",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Laufer",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"LeVere Bolling",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Leftwich",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Lopez",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Maldonado",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Martinez",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"McAuliff",party:"D",votes:["Y","NV","N","N","N","Y","Y"]},
+      {name:"McClure",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"McGuire",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"McLaughlin",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"McNamara",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"McPike",party:"D",votes:["—","—","Y","Y","Y","Y","Y"]},
+      {name:"McQuinn",party:"D",votes:["Y","Y","Y","Y","Y","NV","NV"]},
+      {name:"Mehta",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Morefield",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Nivar",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"O'Quinn",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Oates",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Pence",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Phillips",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Pope Adams",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Price",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Rasoul",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Reaser",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Reid",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Rice",party:"R",votes:["—","—","N","—","N","—","—"]},
+      {name:"Runion",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Schmidt",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Scott, D.",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Scott, P.A.",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Seibold",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Sewell",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Shin",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Simon",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Simonds",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Singh",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Sullivan",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Tata",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Thomas",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Thornton",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Torian",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Tran",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Wachsmann",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Walker",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Ward",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Ware",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Watts",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Webert",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Whittle",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Wiley",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Willett",party:"D",votes:["Y","Y","Y","Y","Y","Y","Y"]},
+      {name:"Williams",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Wilt",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Wright",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+      {name:"Wyatt",party:"R",votes:["N","N","N","N","N","Y","N"]},
+      {name:"Zehr",party:"R",votes:["N","N","N","N","N","Y","Y"]},
+    ]
+  },
+  senate: {
+    label: "Senator",
+    headers: [
+      {code:"HB816", desc:"Zoning; By-Right Multifamily (Commercial)",         date:"03/04/2026", tally:"17-Y 22-N"},
+      {code:"HB1279",desc:"Affordable Housing; Religious/Nonprofit (Gov. Rec.)",date:"04/22/2026", tally:"23-Y 16-N"},
+      {code:"SB531", desc:"Zoning; Accessory Dwelling Units",                   date:"02/12/2026", tally:"21-Y 19-N"},
+      {code:"HB888", desc:"Min. Off-Street Parking (Gov. Rec.)",                date:"04/22/2026", tally:"21-Y 18-N"},
+      {code:"HB655", desc:"Zoning; Manufactured Housing",                       date:"03/04/2026", tally:"39-Y 1-N"},
+      {code:"HB594", desc:"Affordable Housing Expedited Approval",              date:"03/04/2026", tally:"28-Y 12-N"},
+    ],
+    rows: [
+      {name:"Aird",party:"D",votes:["N","Y","Y","Y","Y","Y"]},
+      {name:"Bagby",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Bennett-Parker",party:"D",votes:["Y","Y","—","Y","Y","Y"]},
+      {name:"Boysko",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Carroll Foy",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Cifers",party:"R",votes:["N","N","N","N","N","N"]},
+      {name:"Craig",party:"R",votes:["N","N","N","N","Y","Y"]},
+      {name:"DeSteph",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Deeds",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Diggs",party:"R",votes:["N","N","N","N","Y","Y"]},
+      {name:"Durant",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Ebbin",party:"D",votes:["—","—","Y","—","—","—"]},
+      {name:"Favola",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"French",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Hackworth",party:"R",votes:["Y","Y","N","N","Y","Y"]},
+      {name:"Head",party:"R",votes:["N","NV","N","NV","Y","Y"]},
+      {name:"Jones",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Jordan",party:"R",votes:["N","N","N","N","Y","Y"]},
+      {name:"Locke",party:"D",votes:["N","Y","Y","Y","Y","Y"]},
+      {name:"Lucas",party:"D",votes:["N","Y","Y","Y","Y","Y"]},
+      {name:"Marsden",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"McDougle",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"McPike",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Mulchi",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Obenshain",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Peake",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Pekarsky",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Perry",party:"D",votes:["N","Y","Y","Y","Y","Y"]},
+      {name:"Pillion",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Reeves",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Roem",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Rouse",party:"D",votes:["NV","Y","Y","Y","Y","Y"]},
+      {name:"Salim",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Srinivasan",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Stanley",party:"R",votes:["N","Y","N","N","Y","Y"]},
+      {name:"Stuart",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Sturtevant",party:"R",votes:["N","N","N","N","Y","N"]},
+      {name:"Suetterlein",party:"R",votes:["N","N","N","N","Y","Y"]},
+      {name:"Surovell",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"VanValkenburg",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+      {name:"Williams Graves",party:"D",votes:["Y","Y","Y","Y","Y","Y"]},
+    ]
+  }
+};
+
+let currentTab = 'house';
+let sortCol = -1;
+let sortDir = 1;
+
+function populateBillFilter() {
+  const d = DATA[currentTab];
+  const sel = document.getElementById('billFilter');
+  sel.innerHTML = '<option value="">All bills</option>' +
+    d.headers.map(h => `<option value="${h.code}">${h.code} — ${h.desc}</option>`).join('');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  sortCol = -1; sortDir = 1;
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', (i===0 && tab==='house') || (i===1 && tab==='senate'))
+  );
+  document.getElementById('search').value = '';
+  document.getElementById('partyFilter').value = '';
+  document.getElementById('voteFilter').value = '';
+  document.getElementById('billFilter').value = '';
+  populateBillFilter();
+  render();
+}
+
+function sortBy(col) {
+  sortDir = (sortCol === col) ? sortDir * -1 : 1;
+  sortCol = col;
+  render();
+}
+
+function voteHTML(v) {
+  if (v === 'Y')  return '<span class="vote vote-y">Y</span>';
+  if (v === 'N')  return '<span class="vote vote-n">N</span>';
+  if (v === 'NV') return '<span class="vote vote-nv">NV</span>';
+  return '<span class="vote-blank">&mdash;</span>';
+}
+
+function arrowHTML(col) {
+  if (sortCol !== col) return '<span class="sort-arrow">↕</span>';
+  return `<span class="sort-arrow on">${sortDir === 1 ? '↑' : '↓'}</span>`;
+}
+
+function render() {
+  const d = DATA[currentTab];
+  const search = document.getElementById('search').value.toLowerCase().trim();
+  const party  = document.getElementById('partyFilter').value;
+  const voteF  = document.getElementById('voteFilter').value;
+  const billF  = document.getElementById('billFilter').value;
+
+  // Which bill indices are visible
+  const visibleIdx = d.headers.map((h, i) => (!billF || h.code === billF) ? i : null).filter(i => i !== null);
+
+  let rows = d.rows.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search)) return false;
+    if (party  && r.party !== party) return false;
+    if (voteF  && !visibleIdx.some(i => r.votes[i] === voteF)) return false;
+    return true;
+  });
+
+  const voteOrder = {Y:0, N:1, NV:2, '—':3};
+  if (sortCol === 0) {
+    rows = [...rows].sort((a,b) => sortDir * a.name.localeCompare(b.name));
+  } else if (sortCol === 1) {
+    rows = [...rows].sort((a,b) => sortDir * a.party.localeCompare(b.party));
+  } else if (sortCol >= 2) {
+    const vi = sortCol - 2;
+    rows = [...rows].sort((a,b) =>
+      sortDir * ((voteOrder[a.votes[vi]] ?? 3) - (voteOrder[b.votes[vi]] ?? 3))
+    );
+  }
+
+  document.getElementById('rowCount').textContent =
+    `${rows.length} of ${d.rows.length} members`;
+
+  document.getElementById('thead').innerHTML = `<tr>
+    <th class="th-name th-sortable col-name" onclick="sortBy(0)">${d.label} ${arrowHTML(0)}</th>
+    <th class="th-sortable col-party" onclick="sortBy(1)">Party ${arrowHTML(1)}</th>
+    ${d.headers.map((h, i) => `
+    <th class="th-bill${visibleIdx.includes(i) ? '' : ' hidden'}" onclick="sortBy(${i+2})">
+      <span class="bill-code">${h.code}</span>
+      <span class="bill-desc">${h.desc}</span>
+      <span class="bill-date">${h.date}</span>
+      <span class="bill-tally">(${h.tally})</span>
+      ${arrowHTML(i+2)}
+    </th>`).join('')}
+  </tr>`;
+
+  if (rows.length === 0) {
+    document.getElementById('tbody').innerHTML =
+      `<tr class="empty-row"><td colspan="${visibleIdx.length + 2}">No members match your filters.</td></tr>`;
+    return;
+  }
+
+  document.getElementById('tbody').innerHTML = rows.map(r => `
+    <tr>
+      <td class="td-name">${r.name}</td>
+      <td><span class="party party-${r.party.toLowerCase()}">${r.party}</span></td>
+      ${r.votes.map((v, i) => `<td class="${visibleIdx.includes(i) ? '' : 'hidden'}">${voteHTML(v)}</td>`).join('')}
+    </tr>`).join('');
+}
+
+populateBillFilter();
+render();
+</script>
+</body>
+</html>
